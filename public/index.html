@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Viens, on joue !</title>
+    <meta name="description" content="Jeux multijoueurs en ligne entre amis, dans le navigateur, sans compte : UNO, belote, jeu de l'oie." />
+    <meta name="theme-color" content="#ffd6e8" />
+    <link rel="icon" href="/icons/oie.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/luckiest-guy.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* Self-hosted: the CSP allows 'self' only. Latin subsets from Google Fonts (OFL). */
+      @font-face { font-family: Bungee; src: url(/fonts/bungee.woff2) format("woff2"); font-display: swap; }
+      @font-face { font-family: "Luckiest Guy"; src: url(/fonts/luckiest-guy.woff2) format("woff2"); font-display: swap; }
+      @font-face { font-family: Fredoka; src: url(/fonts/fredoka.woff2) format("woff2"); font-weight: 300 700; font-display: swap; }
+
+      :root { --ink: #3a0f4a; --pink: #ff3d7f; --yellow: #ffd23f; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; color: var(--ink); font: 500 17px/1.45 Fredoka, system-ui, sans-serif; overflow-x: hidden; min-height: 100vh;
+        background: #ffe9f2 repeating-conic-gradient(from 0deg at 50% -10%, #ffd6e8 0 10deg, #ffe9f2 10deg 20deg);
+      }
+
+      .shapes span { position: fixed; z-index: -1; animation: float 7s ease-in-out infinite; }
+      .shapes span:nth-child(1) { top: 12%; left: 6%; width: 60px; height: 60px; border-radius: 50%; background: var(--yellow); }
+      .shapes span:nth-child(2) { top: 60%; left: 4%; width: 0; height: 0; border: 34px solid transparent; border-bottom: 58px solid #3bceac; animation-delay: -2s; }
+      .shapes span:nth-child(3) { top: 20%; right: 6%; width: 90px; height: 24px; border-radius: 12px; background: #7b6cff; rotate: 30deg; animation-delay: -4s; }
+      .shapes span:nth-child(4) { bottom: 8%; right: 10%; width: 70px; height: 70px; border: 10px solid #ff5d8f; border-radius: 50%; animation-delay: -1s; }
+      @keyframes float { 50% { transform: translateY(-24px) rotate(25deg); } }
+
+      main { max-width: 980px; margin: 0 auto; padding: 48px 16px; text-align: center; }
+
+      .marquee {
+        display: inline-block; position: relative; padding: 22px 30px; background: var(--pink); border-radius: 28px;
+        box-shadow: 0 0 0 6px var(--yellow), 0 0 0 12px var(--ink), 0 14px 0 12px var(--ink); rotate: -2deg;
+      }
+      /* The bulbs: two dotted rings offset by half a step, blinking in turn. */
+      .marquee::before, .marquee::after {
+        content: ""; position: absolute; inset: 8px; border-radius: 20px; border: 6px dotted #fff7b0; pointer-events: none;
+        animation: blink 0.9s steps(1) infinite;
+      }
+      .marquee::after { inset: 9px; border-color: #ffffff; animation-delay: -0.45s; }
+      @keyframes blink { 50% { opacity: 0; } }
+      h1 { font-family: "Luckiest Guy", sans-serif; font-weight: 400; font-size: clamp(2.6rem, 11vw, 5.2rem); margin: 0; line-height: 1.05; letter-spacing: 0.03em;
+        /* Trim the font's tall built-in ascent so the text sits optically centred in the sign. */
+        text-box: trim-both cap alphabetic; padding: 0.32em 0.25em 0.38em; }
+      h1 .row { display: block; white-space: nowrap; }
+      h1 .row + .row { margin-top: 0.12em; }
+      h1 .sp { display: inline-block; width: 0.3em; }
+      /* One span per letter so the title ripples like a game title screen. */
+      h1 .l {
+        display: inline-block; color: #fff; -webkit-text-stroke: 0.09em var(--ink); paint-order: stroke fill;
+        text-shadow: 0 0.09em 0 var(--ink); animation: hop 2s ease-in-out infinite; animation-delay: calc(var(--i) * 0.07s);
+      }
+      h1 .hot .l { color: var(--yellow); }
+      @keyframes hop {
+        0%, 55%, 100% { transform: translateY(0) rotate(0) scale(1); }
+        15% { transform: translateY(-0.2em) rotate(-5deg) scale(1.08); }
+        30% { transform: translateY(0.04em) rotate(3deg) scale(0.97, 1.03); }
+        42% { transform: translateY(-0.04em) rotate(0); }
+      }
+
+      .lede { font-family: Bungee, sans-serif; margin: 44px 0 48px; font-size: 1.1rem; }
+
+      .grid { display: grid; gap: 36px 32px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); list-style: none; padding: 0; margin: 0; }
+      /* Shadow on the <li>: a mask on the ticket itself would clip it. */
+      .grid li { filter: drop-shadow(0 6px 0 var(--ink)); }
+      .grid li:nth-child(4n+1) { rotate: -3deg; --c: var(--yellow); }
+      .grid li:nth-child(4n+2) { rotate: 2deg; --c: #8ff0c8; }
+      .grid li:nth-child(4n+3) { rotate: -1.5deg; --c: #a9c7ff; }
+      .grid li:nth-child(4n+4) { rotate: 3deg; --c: #ffb3cf; }
+      .grid li.soon { --c: #fff; filter: drop-shadow(0 6px 0 #3a0f4a55); }
+      .ticket {
+        display: grid; grid-template-rows: auto auto 1fr auto; gap: 8px; height: 100%; padding: 24px 22px; text-decoration: none; color: inherit;
+        background: var(--c); border-radius: 10px;
+        -webkit-mask: radial-gradient(circle 14px at 0 62%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 14px at 100% 62%, #0000 98%, #000) right / 51% 100% no-repeat;
+        mask: radial-gradient(circle 14px at 0 62%, #0000 98%, #000) left / 51% 100% no-repeat, radial-gradient(circle 14px at 100% 62%, #0000 98%, #000) right / 51% 100% no-repeat;
+        transition: transform .25s cubic-bezier(.3,1.6,.5,1);
+      }
+      a.ticket:hover, a.ticket:focus-visible { transform: translateY(-10px) rotate(3deg) scale(1.04); outline: none; }
+      .ticket img { width: 76px; height: 76px; margin: 0 auto; border-radius: 16px; }
+      .ticket .emoji { font-size: 3.5rem; line-height: 76px; }
+      .ticket h2 { font-family: Bungee, sans-serif; font-weight: 400; margin: 0; font-size: 1.6rem; }
+      .ticket p { margin: 0; }
+      .stub { border-top: 3px dashed #3a0f4a55; padding-top: 12px; margin-top: 8px; font-family: Bungee, sans-serif; display: flex; justify-content: space-between; }
+
+      footer { text-align: center; padding: 24px 16px 48px; }
+      footer a { color: inherit; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .shapes span, .marquee::before, .marquee::after, h1 .l { animation: none; }
+        .ticket { transition: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shapes" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    <main>
+      <div class="marquee"><h1 aria-label="Viens, on joue !"><span class="row" aria-hidden="true"><span class="l" style="--i:0">V</span><span class="l" style="--i:1">i</span><span class="l" style="--i:2">e</span><span class="l" style="--i:3">n</span><span class="l" style="--i:4">s</span><span class="l" style="--i:5">,</span></span><span class="row hot" aria-hidden="true"><span class="l" style="--i:6">o</span><span class="l" style="--i:7">n</span><span class="sp"></span><span class="l" style="--i:8">j</span><span class="l" style="--i:9">o</span><span class="l" style="--i:10">u</span><span class="l" style="--i:11">e</span><span class="sp"></span><span class="l" style="--i:12">!</span></span></h1></div>
+      <p class="lede">Prends un ticket, ramène tes potes</p>
+
+      <!-- Ajouter un jeu : copier un <li>, changer le lien, l'icône (public/icons/) et le texte. -->
+      <ul class="grid">
+        <li><a class="ticket" href="https://uno.jdelgado.fr/"><img src="/icons/uno.svg" alt="" /><h2>UNO</h2><p>Cumul des +2/+4, règles maison, chat vocal.</p><div class="stub"><span>2-4 joueurs</span><span>Entrer →</span></div></a></li>
+        <li><a class="ticket" href="https://belote.jdelgado.fr/"><img src="/icons/belote.svg" alt="" /><h2>Belote</h2><p>Classique ou coinchée, potes ou bots.</p><div class="stub"><span>4 joueurs</span><span>Entrer →</span></div></a></li>
+        <li><a class="ticket" href="https://oie.jdelgado.fr/"><img src="/icons/oie.svg" alt="" /><h2>L'oie</h2><p>63 cases et un puits qui ne pardonne pas.</p><div class="stub"><span>2-6 joueurs</span><span>Entrer →</span></div></a></li>
+        <li class="soon"><div class="ticket"><span class="emoji" aria-hidden="true">🎪</span><h2>Bientôt</h2><p>Nouvelle attraction en montage.</p><div class="stub"><span>???</span><span>Patience</span></div></div></li>
+      </ul>
+    </main>
+    <footer>Fait le week-end par <a href="https://jdelgado.fr">Jérémy</a></footer>
+  </body>
+</html>

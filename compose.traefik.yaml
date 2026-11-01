@@ -1,0 +1,18 @@
+# Static index of the games, behind an existing Traefik.
+#   docker compose -f compose.traefik.yaml up -d --build
+services:
+  jeux:
+    build: .
+    networks: [traefik]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.jeux.rule=Host(`jeux.jdelgado.fr`)
+      - traefik.http.routers.jeux.entrypoints=websecure
+      - traefik.http.routers.jeux.tls.certresolver=REPLACE_RESOLVER
+      - traefik.http.services.jeux.loadbalancer.server.port=8080
+    restart: unless-stopped
+
+networks:
+  traefik:
+    name: REPLACE_TRAEFIK_NETWORK
+    external: true
